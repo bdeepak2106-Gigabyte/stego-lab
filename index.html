@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Steganography Lab — hide messages in pixels</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #15110D;
+    --bg-panel: #1E1812;
+    --bg-panel-2: #241C15;
+    --paper: #EDE6D6;
+    --paper-dim: #B9AF9C;
+    --red: #B23A2E;
+    --red-bright: #D8503F;
+    --amber: #C9962B;
+    --sage: #7A9478;
+    --line: #382E23;
+    --line-soft: #2A231B;
+    --radius: 6px;
+    --font-display: 'Fraunces', serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse at top left, rgba(178,58,46,0.06), transparent 60%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px);
+    color: var(--paper);
+    font-family: var(--font-body);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 56px 24px 100px; }
+
+  header.hero { margin-bottom: 48px; }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--red-bright);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .eyebrow .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--red-bright);
+    box-shadow: 0 0 8px 2px rgba(216,80,63,0.5);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+  h1.title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(34px, 5vw, 52px);
+    margin: 0 0 14px;
+    color: var(--paper);
+    letter-spacing: -0.01em;
+  }
+  h1.title em { color: var(--red-bright); font-style: normal; }
+  p.sub {
+    font-size: 16px;
+    color: var(--paper-dim);
+    max-width: 560px;
+    margin: 0;
+  }
+
+  .panel { display: none; padding-top: 36px; }
+  .panel.active { display: block; }
+
+  .note {
+    font-size: 13.5px;
+    color: var(--paper-dim);
+    background: var(--bg-panel);
+    border-left: 2px solid var(--amber);
+    padding: 12px 16px;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    margin-bottom: 28px;
+  }
+  .note strong { color: var(--amber); font-weight: 500; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px;
+  }
+  .card h3 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 18px;
+    margin: 0 0 4px;
+    color: var(--paper);
+  }
+  .card .h-sub { font-size: 12.5px; color: var(--paper-dim); margin: 0 0 18px; font-family: var(--font-mono); letter-spacing: 0.03em; }
+
+  label.field-label {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--paper-dim);
+    margin: 18px 0 7px;
+    font-family: var(--font-mono);
+  }
+  label.field-label:first-of-type { margin-top: 0; }
+
+  .dropzone {
+    border: 1px dashed var(--line);
+    border-radius: var(--radius);
+    padding: 22px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s ease, background .2s ease;
+    background: var(--bg-panel-2);
+  }
+  .dropzone:hover, .dropzone.drag { border-color: var(--red-bright); background: rgba(178,58,46,0.06); }
+  .dropzone p { margin: 0; font-size: 13.5px; color: var(--paper-dim); }
+  .dropzone .fname { color: var(--sage); font-family: var(--font-mono); font-size: 12.5px; margin-top: 6px; word-break: break-all; }
+  .dropzone input { display: none; }
+
+  textarea, input[type="text"], input[type="password"] {
+    width: 100%;
+    background: var(--bg-panel-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--paper);
+    font-family: var(--font-mono);
+    font-size: 13.5px;
+    padding: 11px 13px;
+    resize: vertical;
+  }
+  textarea:focus, input:focus { outline: none; border-color: var(--red-bright); }
+  textarea::placeholder, input::placeholder { color: #5B5548; }
+
+  .capacity-bar {
+    height: 4px; background: var(--line-soft); border-radius: 2px; overflow: hidden; margin-top: 8px;
+  }
+  .capacity-fill { height: 100%; background: var(--sage); width: 0%; transition: width .2s ease, background .2s ease; }
+  .capacity-text { font-family: var(--font-mono); font-size: 11.5px; color: var(--paper-dim); margin-top: 5px; }
+  .capacity-text.over { color: var(--red-bright); }
+
+  button.btn {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: var(--red);
+    color: var(--paper);
+    border: 1px solid var(--red);
+    border-radius: var(--radius);
+    padding: 12px 20px;
+    cursor: pointer;
+    margin-top: 20px;
+    width: 100%;
+    transition: background .2s ease, transform .05s ease;
+  }
+  button.btn:hover { background: var(--red-bright); }
+  button.btn:active { transform: scale(0.99); }
+  button.btn.ghost {
+    background: transparent; color: var(--paper-dim); border-color: var(--line);
+  }
+  button.btn.ghost:hover { border-color: var(--paper-dim); color: var(--paper); }
+  button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .result-area { margin-top: 18px; min-height: 4px; }
+  .beam-wrap { position: relative; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); }
+  .beam-wrap canvas, .beam-wrap img { display: block; width: 100%; height: auto; }
+  .beam {
+    position: absolute; left: 0; right: 0; height: 40%;
+    background: linear-gradient(180deg, transparent, rgba(216,80,63,0.35), transparent);
+    animation: scan 1.1s linear;
+    pointer-events: none;
+  }
+  @keyframes scan { from { top: -40%; } to { top: 100%; } }
+
+  .decoded-box {
+    background: var(--bg-panel-2);
+    border: 1px solid var(--sage);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    font-family: var(--font-mono);
+    font-size: 13.5px;
+    color: var(--sage);
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-top: 14px;
+  }
+  .error-box {
+    background: rgba(178,58,46,0.1);
+    border: 1px solid var(--red);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--red-bright);
+    margin-top: 14px;
+  }
+
+  a.dl {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono); font-size: 13px;
+    color: var(--amber); text-decoration: none;
+    border: 1px solid var(--amber); border-radius: var(--radius);
+    padding: 10px 16px; margin-top: 14px;
+  }
+  a.dl:hover { background: rgba(201,150,43,0.1); }
+
+  .divider-label {
+    display: flex; align-items: center; gap: 12px;
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em;
+    color: var(--paper-dim); text-transform: uppercase;
+    margin: 30px 0 18px;
+  }
+  .divider-label::before, .divider-label::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+  footer.foot {
+    margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--line);
+    font-family: var(--font-mono); font-size: 12px; color: #5B5548;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="eyebrow"><span class="dot"></span> DARKROOM — COVERT CHANNELS</div>
+    <h1 class="title">Image Steganography <em>Lab</em></h1>
+    <p class="sub">Hide a text message inside the least significant bits of an image, invisible to the eye, recoverable with the right file. Runs entirely in your browser — nothing you upload ever leaves this page.</p>
+  </header>
+
+  <!-- IMAGE PANEL -->
+  <section class="panel active" id="panel-image">
+    <div class="note"><strong>Lossless only.</strong> Hidden data lives in pixel bits, so it only survives lossless formats. Upload any image — the encoded result always downloads as PNG.</div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Conceal</h3>
+        <p class="h-sub">write a message into an image</p>
+
+        <label class="field-label">Cover image</label>
+        <div class="dropzone" id="img-drop">
+          <input type="file" id="img-file" accept="image/*" />
+          <p>Drop an image, or click to browse</p>
+          <div class="fname" id="img-fname"></div>
+        </div>
+
+        <label class="field-label">Secret message</label>
+        <textarea id="img-message" rows="4" placeholder="Type the message you want hidden inside the image"></textarea>
+        <div class="capacity-bar"><div class="capacity-fill" id="img-cap-fill"></div></div>
+        <div class="capacity-text" id="img-cap-text">Load an image to see how much it can hold</div>
+
+        <label class="field-label">Passphrase (optional)</label>
+        <input type="text" id="img-pass" placeholder="Simple XOR scramble — not real encryption" />
+
+        <button class="btn" id="img-encode-btn" disabled>Encode into image</button>
+
+        <div class="result-area" id="img-encode-result"></div>
+      </div>
+
+      <div class="card">
+        <h3>Reveal</h3>
+        <p class="h-sub">extract a message from an image</p>
+
+        <label class="field-label">Encoded image</label>
+        <div class="dropzone" id="img-decode-drop">
+          <input type="file" id="img-decode-file" accept="image/*" />
+          <p>Drop the encoded PNG, or click to browse</p>
+          <div class="fname" id="img-decode-fname"></div>
+        </div>
+
+        <label class="field-label">Passphrase (if one was used)</label>
+        <input type="text" id="img-decode-pass" placeholder="Leave blank if none was used" />
+
+        <button class="btn" id="img-decode-btn" disabled>Decode message</button>
+
+        <div class="result-area" id="img-decode-result"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">Runs client-side with the HTML5 canvas LSB technique. No server, no upload, no tracking.</footer>
+</div>
+
+<script>
+(function(){
+
+  function bytesToBits(bytes){
+    const bits = [];
+    for (let b of bytes) for (let i = 7; i >= 0; i--) bits.push((b >> i) & 1);
+    return bits;
+  }
+  function bitsToBytes(bits){
+    const bytes = [];
+    for (let i = 0; i < bits.length; i += 8){
+      let byte = 0;
+      for (let j = 0; j < 8; j++) byte = (byte << 1) | (bits[i+j] || 0);
+      bytes.push(byte);
+    }
+    return bytes;
+  }
+  function xorBytes(bytes, passphrase){
+    if (!passphrase) return bytes;
+    const key = new TextEncoder().encode(passphrase);
+    const out = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) out[i] = bytes[i] ^ key[i % key.length];
+    return out;
+  }
+
+  function capacityBytes(imageData){
+    const usablePixels = imageData.width * imageData.height;
+    return Math.floor((usablePixels * 3) / 8) - 4;
+  }
+
+  function encodeIntoImageData(imageData, message, passphrase){
+    const msgBytesRaw = new TextEncoder().encode(message);
+    const msgBytes = xorBytes(msgBytesRaw, passphrase);
+    const lengthBits = bytesToBits(new Uint8Array([
+      (msgBytes.length >>> 24) & 0xff,
+      (msgBytes.length >>> 16) & 0xff,
+      (msgBytes.length >>> 8) & 0xff,
+      msgBytes.length & 0xff
+    ]));
+    const msgBits = bytesToBits(msgBytes);
+    const allBits = lengthBits.concat(msgBits);
+
+    const data = imageData.data;
+    let bitIndex = 0;
+    for (let i = 0; i < data.length && bitIndex < allBits.length; i += 4){
+      for (let c = 0; c < 3 && bitIndex < allBits.length; c++){
+        data[i + c] = (data[i + c] & 0xFE) | allBits[bitIndex];
+        bitIndex++;
+      }
+    }
+    if (bitIndex < allBits.length){
+      throw new Error('Message is too large for this image.');
+    }
+    return imageData;
+  }
+
+  function decodeFromImageData(imageData, passphrase){
+    const data = imageData.data;
+    const bits = [];
+    const totalNeededForLength = 32;
+    let i = 0;
+    while (bits.length < totalNeededForLength && i < data.length){
+      for (let c = 0; c < 3 && bits.length < totalNeededForLength; c++) bits.push(data[i + c] & 1);
+      i += 4;
+    }
+    const lengthBytes = bitsToBytes(bits);
+    const msgLen = (lengthBytes[0] << 24) | (lengthBytes[1] << 16) | (lengthBytes[2] << 8) | lengthBytes[3];
+    if (!(msgLen > 0 && msgLen < 50_000_000)){
+      throw new Error('No hidden message found in this image.');
+    }
+    const neededBits = msgLen * 8;
+    const msgBits = [];
+    while (msgBits.length < neededBits && i < data.length){
+      for (let c = 0; c < 3 && msgBits.length < neededBits; c++) msgBits.push(data[i + c] & 1);
+      i += 4;
+    }
+    if (msgBits.length < neededBits) throw new Error('No hidden message found in this image.');
+    const msgBytesEnc = new Uint8Array(bitsToBytes(msgBits));
+    const msgBytes = xorBytes(msgBytesEnc, passphrase);
+    try {
+      return new TextDecoder('utf-8', { fatal: true }).decode(msgBytes);
+    } catch (e) {
+      throw new Error('Decoding failed — wrong passphrase, or no hidden message here.');
+    }
+  }
+
+  function setupDropzone(dropId, inputId, fnameId, onFile){
+    const drop = document.getElementById(dropId);
+    const input = document.getElementById(inputId);
+    const fname = document.getElementById(fnameId);
+    drop.addEventListener('click', () => input.click());
+    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+    drop.addEventListener('drop', e => {
+      e.preventDefault(); drop.classList.remove('drag');
+      if (e.dataTransfer.files[0]){ input.files = e.dataTransfer.files; onFile(e.dataTransfer.files[0]); fname.textContent = e.dataTransfer.files[0].name; }
+    });
+    input.addEventListener('change', () => {
+      if (input.files[0]){ onFile(input.files[0]); fname.textContent = input.files[0].name; }
+    });
+  }
+
+  function loadImageFile(file){
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => resolve({img, url});
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+
+  function updateCapacityUI(fillEl, textEl, capBytes, msgLen){
+    const pct = capBytes > 0 ? Math.min(100, (msgLen / capBytes) * 100) : 0;
+    fillEl.style.width = pct + '%';
+    fillEl.style.background = pct > 100 ? 'var(--red-bright)' : (pct > 85 ? 'var(--amber)' : 'var(--sage)');
+    textEl.classList.toggle('over', msgLen > capBytes);
+    textEl.textContent = capBytes > 0
+      ? msgLen + ' / ' + capBytes + ' bytes used'
+      : 'Load an image to see how much it can hold';
+  }
+
+  function flashBeam(container){
+    const beam = document.createElement('div');
+    beam.className = 'beam';
+    container.appendChild(beam);
+    setTimeout(() => beam.remove(), 1200);
+  }
+
+  // ---------- IMAGE PANEL ----------
+  let imgState = null;
+
+  setupDropzone('img-drop', 'img-file', 'img-fname', async (file) => {
+    const {img, url} = await loadImageFile(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    imgState = { canvas, ctx };
+    URL.revokeObjectURL(url);
+    document.getElementById('img-encode-btn').disabled = false;
+    refreshImgCapacity();
+  });
+
+  function refreshImgCapacity(){
+    if (!imgState) return;
+    const imageData = imgState.ctx.getImageData(0, 0, imgState.canvas.width, imgState.canvas.height);
+    const cap = capacityBytes(imageData);
+    const msgLen = new TextEncoder().encode(document.getElementById('img-message').value).length;
+    updateCapacityUI(document.getElementById('img-cap-fill'), document.getElementById('img-cap-text'), cap, msgLen);
+  }
+  document.getElementById('img-message').addEventListener('input', refreshImgCapacity);
+
+  document.getElementById('img-encode-btn').addEventListener('click', () => {
+    const resultEl = document.getElementById('img-encode-result');
+    resultEl.innerHTML = '';
+    const message = document.getElementById('img-message').value;
+    const passphrase = document.getElementById('img-pass').value;
+    if (!message){ resultEl.innerHTML = '<div class="error-box">Type a message to hide first.</div>'; return; }
+    try {
+      const w = imgState.canvas.width, h = imgState.canvas.height;
+      const imageData = imgState.ctx.getImageData(0, 0, w, h);
+      const encoded = encodeIntoImageData(imageData, message, passphrase);
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = w; outCanvas.height = h;
+      outCanvas.getContext('2d').putImageData(encoded, 0, 0);
+
+      const wrap = document.createElement('div');
+      wrap.className = 'beam-wrap';
+      wrap.appendChild(outCanvas);
+      resultEl.appendChild(wrap);
+      flashBeam(wrap);
+
+      const link = document.createElement('a');
+      link.className = 'dl';
+      link.textContent = 'Download encoded PNG';
+      link.href = outCanvas.toDataURL('image/png');
+      link.download = 'encoded-image.png';
+      resultEl.appendChild(link);
+    } catch (e) {
+      resultEl.innerHTML = '<div class="error-box">' + e.message + '</div>';
+    }
+  });
+
+  setupDropzone('img-decode-drop', 'img-decode-file', 'img-decode-fname', async (file) => {
+    document.getElementById('img-decode-btn').disabled = false;
+    document.getElementById('img-decode-btn').dataset.pending = '1';
+    const {img, url} = await loadImageFile(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+    canvas.getContext('2d').drawImage(img, 0, 0);
+    document.getElementById('img-decode-btn').imgCanvas = canvas;
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('img-decode-btn').addEventListener('click', function(){
+    const resultEl = document.getElementById('img-decode-result');
+    resultEl.innerHTML = '';
+    const canvas = this.imgCanvas;
+    if (!canvas) return;
+    const passphrase = document.getElementById('img-decode-pass').value;
+    try {
+      const imageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+      const message = decodeFromImageData(imageData, passphrase);
+      resultEl.innerHTML = '<div class="decoded-box"></div>';
+      resultEl.querySelector('.decoded-box').textContent = message;
+    } catch (e) {
+      resultEl.innerHTML = '<div class="error-box">' + e.message + '</div>';
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
